@@ -1,6 +1,9 @@
-submit_*
-demo_img/*
-output/*
-tensorboard_logs
-*internal*
-guided-diffusion
+**/__pycache__/**
+**/.ipynb_checkpoints/**
+.DS_Store
+
+logs/
+taming/
+taming-transformers/
+slurm_scripts/*.log
+*.pt

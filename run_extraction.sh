@@ -16,4 +16,7 @@ accelerate launch \
     --num_machines $NNODES \
     --mixed_precision $PRECISION \
     extract_features.py \
-    --config $CONFIG_PATH
+    --config $CONFIG_PATH \
+    --data_path /BS/var/nobackup/imagenet-1k \
+    --data_split train \
+    --output_path /BS/var/nobackup/imagenet-1k-latent

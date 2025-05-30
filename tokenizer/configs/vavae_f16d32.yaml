@@ -1,4 +1,4 @@
-ckpt_path: /path/to/checkpoint.pt
+ckpt_path: vavae-imagenet256-f16d32-dinov2.pt
 
 model:
   base_learning_rate: 1.0e-04

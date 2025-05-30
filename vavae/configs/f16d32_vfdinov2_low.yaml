@@ -1,4 +1,4 @@
-ckpt_path: /path/to/ckpt # used for testing only, add your ckpt path if you want to test the model
+ckpt_path: logs/f16d32_vfdinov2_low/checkpoints/last.ckpt # used for testing only, add your ckpt path if you want to test the model
 # weight_init: /path/to/weight_init # if you want to finetune va-vae on your own dataset, add your weight_init path
 
 model:
@@ -7,7 +7,7 @@ model:
   params:
     monitor: val/rec_loss
     embed_dim: 32
-    input_mode: 0 # original images
+    input_mode: 1 # low frequency components
     # hyper-param for vision foundation model alignment
     # --------------------------------------------------
     use_vf: dinov2

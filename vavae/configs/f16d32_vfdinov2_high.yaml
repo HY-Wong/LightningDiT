@@ -1,4 +1,4 @@
-ckpt_path: /path/to/ckpt # used for testing only, add your ckpt path if you want to test the model
+ckpt_path: logs/f16d32_vfdinov2_high/checkpoints/last.ckpt # used for testing only, add your ckpt path if you want to test the model
 # weight_init: /path/to/weight_init # if you want to finetune va-vae on your own dataset, add your weight_init path
 
 model:
@@ -7,10 +7,10 @@ model:
   params:
     monitor: val/rec_loss
     embed_dim: 32
-    input_mode: 0 # original images
+    input_mode: 2 # high frequency components,
     # hyper-param for vision foundation model alignment
     # --------------------------------------------------
-    use_vf: dinov2
+    use_vf: null
     reverse_proj: true        # default: true, project from vae dim --> dinov2 dim
     # --------------------------------------------------
     lossconfig:
@@ -19,6 +19,8 @@ model:
         disc_start: 5001
         kl_weight: 1.0e-06
         disc_weight: 0.5
+        disc_in_channels: 9
+        perceptual_weight: 0.0
         # hyper-param for vision foundation model alignment
         # --------------------------------------------------
         vf_weight: 0.1
@@ -29,12 +31,11 @@ model:
     ddconfig:
       double_z: true
       z_channels: 32
-      resolution: 256
-      in_channels: 3
-      out_ch: 3
+      resolution: 128
+      in_channels: 9
+      out_ch: 9
       ch: 128
       ch_mult:
-      - 1
       - 1
       - 2
       - 2

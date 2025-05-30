@@ -136,6 +136,12 @@ def get_parser(**parser_kwargs):
         default=True,
         help="scale base-lr by ngpu * batch_size * n_accumulate",
     )
+    parser.add_argument(
+        "--num_nodes",
+        type=int,
+        default=1,
+        help="number of nodes",
+    )
     return parser
 
 
@@ -182,7 +188,7 @@ class DataModuleFromConfig(pl.LightningDataModule):
         super().__init__()
         self.batch_size = batch_size
         self.dataset_configs = dict()
-        self.num_workers = num_workers if num_workers is not None else batch_size * 2
+        self.num_workers = 4 # num_workers if num_workers is not None else batch_size * 2
         self.use_worker_init_fn = use_worker_init_fn
         if train is not None:
             self.dataset_configs["train"] = train
@@ -525,6 +531,7 @@ if __name__ == "__main__":
     else:
         ckpt_files.sort(key=lambda x: int(os.path.basename(x).split('=')[1].split('.')[0]))
         ckpt = ckpt_files[-1]
+        print(f"Resume training from checkpoints: {ckpt}")
     opt.resume_from_checkpoint = ckpt
 
     try:
@@ -535,7 +542,7 @@ if __name__ == "__main__":
         lightning_config = config.pop("lightning", OmegaConf.create())
         # merge trainer cli with config
         trainer_config = lightning_config.get("trainer", OmegaConf.create())
-        trainer_config = dict(accelerator=trainer_config.accelerator, devices=trainer_config.devices, num_nodes=trainer_config.num_nodes, strategy=trainer_config.strategy, max_epochs=trainer_config.max_epochs, 
+        trainer_config = dict(accelerator=trainer_config.accelerator, devices=torch.cuda.device_count(), num_nodes=opt.num_nodes, strategy=trainer_config.strategy, max_epochs=trainer_config.max_epochs, 
                               precision=trainer_config.precision if hasattr(trainer_config, 'precision') else 32
                               )
         trainer_opt = argparse.Namespace(**trainer_config)

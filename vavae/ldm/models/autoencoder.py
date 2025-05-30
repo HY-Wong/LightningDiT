@@ -2,6 +2,7 @@ import torch
 import pytorch_lightning as pl
 import torch.nn.functional as F
 from contextlib import contextmanager
+from pytorch_wavelets import DWTForward
 
 from taming.modules.vqvae.quantize import VectorQuantizer2 as VectorQuantizer
 
@@ -293,6 +294,7 @@ class AutoencoderKL(pl.LightningModule):
                  colorize_nlabels=None,
                  monitor=None,
                  use_vf=None,
+                 input_mode=0,
                  reverse_proj=False,
                  proj_fix=False
                  ):
@@ -324,6 +326,9 @@ class AutoencoderKL(pl.LightningModule):
                 self.linear_proj = torch.nn.Conv2d(embed_dim, vf_feature_dim, kernel_size=1, bias=False)
         else:
             self.use_vf = None
+        self.input_mode = input_mode
+        if self.input_mode:
+            self.dwt = DWTForward(J=1, wave='haar', mode='zero')
         self.reverse_proj = reverse_proj
         self.automatic_optimization = False
         self.proj_fix = proj_fix
@@ -377,6 +382,14 @@ class AutoencoderKL(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         inputs = self.get_input(batch, self.image_key)
+        if self.input_mode == 1: 
+            ll1, _ = self.dwt(inputs) # low frequency components
+            ll1 = ll1 / 2 # normalize
+            inputs = F.interpolate(ll1, size=256, mode='bicubic', align_corners=False)
+        elif self.input_mode == 2:
+            _, hs = self.dwt(inputs) # high frequency components
+            h1 = hs[0] / 2 # normalize
+            inputs = h1.view(-1, 9, 128, 128)
         reconstructions, posterior, z, aux_feature = self(inputs)
         ae_opt, disc_opt = self.optimizers()
 
@@ -409,6 +422,14 @@ class AutoencoderKL(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx, dataloader_idx=0, data_type=None):
         inputs = self.get_input(batch, self.image_key)
+        if self.input_mode == 1: 
+            ll1, _ = self.dwt(inputs) # low frequency components
+            ll1 = ll1 / 2 # normalize
+            inputs = F.interpolate(ll1, size=256, mode='bicubic', align_corners=False)
+        elif self.input_mode == 2:
+            _, hs = self.dwt(inputs) # high frequency components
+            h1 = hs[0] / 2 # normalize
+            inputs = h1.view(-1, 9, 128, 128)
         reconstructions, posterior, z, aux_feature = self(inputs)
         enc_last_layer = self.encoder.conv_out.weight
         aeloss, log_dict_ae = self.loss(inputs, reconstructions, posterior, 0, self.global_step,
@@ -447,15 +468,37 @@ class AutoencoderKL(pl.LightningModule):
         log = dict()
         x = self.get_input(batch, self.image_key)
         x = x.to(self.device)
+        if self.input_mode == 1:
+            ll1, _ = self.dwt(x) # low frequency components
+            ll1 = ll1 / 2 # normalize
+            x = F.interpolate(ll1, size=256, mode='bicubic', align_corners=False)
+        elif self.input_mode == 2:
+            _, hs = self.dwt(x) # high frequency components
+            h1 = hs[0] / 2 # normalize
+            x = h1.view(-1, 9, 128, 128)
+        
         if not only_inputs:
             xrec, posterior, z, aux_features = self(x)
+            """
             if x.shape[1] > 3:
                 # colorize with random projection
                 assert xrec.shape[1] > 3
                 x = self.to_rgb(x)
                 xrec = self.to_rgb(xrec)
-            log["samples"] = self.decode(torch.randn_like(posterior.sample()))
+            """
+            
+            xsample = self.decode(torch.randn_like(posterior.sample()))
+            if self.input_mode == 2:
+                xsample = xsample.view(xsample.shape[0], 3, 3, 128, 128)
+                xsample = xsample.reshape(xsample.shape[0], 3, 128 * 3, 128)
+                xrec = xrec.view(xrec.shape[0], 3, 3, 128, 128)
+                xrec = xrec.reshape(xrec.shape[0], 3, 128 * 3, 128)
+            log["samples"] = xsample
             log["reconstructions"] = xrec
+
+        if self.input_mode == 2:
+            x = x.view(x.shape[0], 3, 3, 128, 128)
+            x = x.reshape(x.shape[0], 3, 128 * 3, 128)
         log["inputs"] = x
         return log
 

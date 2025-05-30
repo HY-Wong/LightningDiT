@@ -20,8 +20,12 @@ def main(args):
 
     # Setup DDP:
     try:
-        dist.init_process_group("nccl")
-        rank = dist.get_rank()
+        if 'SLURM_PROCID' in os.environ:
+            rank = int(os.environ['SLURM_PROCID'])
+            dist.init_process_group('nccl', init_method='env://', world_size=args.world_size, rank=rank)
+        else:
+            dist.init_process_group("nccl")
+            rank = dist.get_rank()
         device = rank % torch.cuda.device_count()
         world_size = dist.get_world_size()
         seed = args.seed + rank
@@ -48,8 +52,8 @@ def main(args):
 
     # Setup data:
     datasets = [
-        ImageFolder(args.data_path, transform=tokenizer.img_transform(p_hflip=0.0)),
-        ImageFolder(args.data_path, transform=tokenizer.img_transform(p_hflip=1.0))
+        ImageFolder(os.path.join(args.data_path, 'train'), transform=tokenizer.img_transform(p_hflip=0.0)),
+        ImageFolder(os.path.join(args.data_path, 'train'), transform=tokenizer.img_transform(p_hflip=1.0))
     ]
     samplers = [
         DistributedSampler(
@@ -161,10 +165,11 @@ if __name__ == "__main__":
     parser.add_argument("--data_path", type=str, default='/path/to/your/data')
     parser.add_argument("--data_split", type=str, default='imagenet_train')
     parser.add_argument("--output_path", type=str, default="/path/to/your/output")
-    parser.add_argument("--config", type=str, default="config_details.yaml")
+    parser.add_argument("--config", type=str, default="tokenizer/configs/vavae_f16d32.yaml")
     parser.add_argument("--image_size", type=int, default=256)
-    parser.add_argument("--batch_size", type=int, default=20)
+    parser.add_argument("--batch_size", type=int, default=50)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--num_workers", type=int, default=8)
+    parser.add_argument('--world_size', default=1, type=int)
     args = parser.parse_args()
     main(args)
