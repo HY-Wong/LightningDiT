@@ -21,7 +21,7 @@ from ldm.util import instantiate_from_config
 if __name__ == '__main__':
     parser = argparse.ArgumentParser('VAE Analysis', add_help=False)
     parser.add_argument('--batch_size', default=200, type=int)
-    parser.add_argument('--data_path', default='/BS/var/nobackup/imagenet-1k/', type=str)
+    parser.add_argument('--data_path', default='/path/to/imagenet-1k', type=str)
     parser.add_argument('--resos', default=256, type=int)
     args = parser.parse_args()
     device = torch.device('cuda:0') if torch.cuda.is_available() else torch.device('cpu')
@@ -61,8 +61,8 @@ if __name__ == '__main__':
     dwt = DWTForward(J=1, wave='haar', mode='zero').to(device)
     idwt = DWTInverse('haar', mode='zero').to(device)
 
-    ref_dir = '/BS/var/nobackup/recon/ground_truth'
-    save_dir = '/BS/var/nobackup/recon/va-vae-high-low-f16c32'
+    ref_dir = '/path/to/recon/ground_truth' # reference images
+    save_dir = '/path/to/recon/va-vae-high-low-f16c32' # generated images
     os.makedirs(ref_dir, exist_ok=True)
     os.makedirs(save_dir, exist_ok=True)
 

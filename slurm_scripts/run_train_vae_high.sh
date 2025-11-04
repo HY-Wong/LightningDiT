@@ -1,15 +1,15 @@
 #!/bin/bash
-#SBATCH -p gpu17
-#SBATCH --gres gpu:2
-#SBATCH --nodes 8
-#SBATCH --ntasks-per-node 2
-#SBATCH -t 0-08:00:0
+#SBATCH -p <partition_name> 
+#SBATCH --gres gpu:<num_gpus>
+#SBATCH --nodes <num_nodes> 
+#SBATCH --ntasks-per-node <tasks_per_node>
+#SBATCH -t <days>-<hours>:<minutes>:<seconds>
 #SBATCH -o train_vae_high_output_%j.log
 #SBATCH -e train_vae_high_error_%j.log
 
 # activate Conda environmentsca
 source ~/.bashrc
-conda activate ldm-new  
+conda activate ldm
 
 cd ../vavae
 
