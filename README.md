@@ -1,159 +1,88 @@
-<div align="center">
+# Improving Image Details via Frequency-Aware Latent Optimization
 
-<h2>⚡Reconstruction <i>vs.</i> Generation:
+> _A forked experimental project based on the original repository._  
+> **Original README:** [README.md](docs/README_original.md)
 
-Taming Optimization Dilemma in Latent Diffusion Models</h2>
+---
 
-**CVPR 2025 Award Candidate**
+## 1. Main Goal 
+Modern latent generative models—especially two-stage diffusion and autoregressive frameworks—achieve strong performance in high-fidelity image synthesis, yet still struggle to preserve fine textures and sharp transitions. These missing details are largely tied to high-frequency information that is often lost during the latent compression stage.
 
-**_FID=1.35 on ImageNet-256 & 21.8x faster training than DiT!_**
+The goal of this project is to explore how frequency information can be incorporated into latent representations to improve reconstruction quality and enhance downstream generation. By examining the frequency biases of existing state-of-the-art tokenizers and experimenting with frequency-aware designs, this project investigates whether improved high-frequency fidelity can lead to sharper, more realistic image synthesis in both diffusion-based and autoregressive models.
 
-[Jingfeng Yao](https://github.com/JingfengYao)¹, [Bin Yang](https://www.cs.toronto.edu/~byang/)², [Xinggang Wang](https://xwcv.github.io/index.htm)¹*
+<p align="center">
+  <img src="images/teaser.png" alt="teaser image" width="35%">
+</p>
 
-¹ ​Huazhong University of Science and Technology (HUST)  
-² ​Independent Researcher
+---
 
-*Corresponding author: xgwang@hust.edu.cn
+## 2. Main Results  
+### **Reconstruction Results**
 
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/reconstruction-vs-generation-taming-1/image-generation-on-imagenet-256x256)](https://paperswithcode.com/sota/image-generation-on-imagenet-256x256?p=reconstruction-vs-generation-taming-1)
-<!-- [![arXiv](https://img.shields.io/badge/arXiv-VA_VAE-b31b1b.svg)]()
-[![arXiv](https://img.shields.io/badge/arXiv-FasterDiT-b31b1b.svg)](https://arxiv.org/abs/2410.10356) -->
-[![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-[![authors](https://img.shields.io/badge/by-hustvl-green)](https://github.com/hustvl)
-[![paper](https://img.shields.io/badge/CVPR'25-VA_VAE-b31b1b.svg)](https://arxiv.org/abs/2501.01423)
-[![arXiv](https://img.shields.io/badge/NeurIPS'24-FasterDiT-b31b1b.svg)](https://arxiv.org/abs/2410.10356)
+| Model (Tokenizer) | Recon. Loss ↓ | Low Freq. Loss ↓ | High Freq. Loss ↓ | LPIPS ↓ | rFID ↓ |
+|-------------------|----------------|------------------|-------------------|---------|--------|
+| KL-VAE ([MAR](https://github.com/LTH14/mar)) | 0.0148 | 0.0326 | 0.0089 | 0.1355 | 0.5310 |
+| MS-VQ-VAE ([VAR](https://github.com/FoundationVision/VAR)) | 0.0195 | 0.0549 | 0.0076 | 0.1890 | 0.6981 |
+| VA-VAE ([LightningDiT](https://github.com/hustvl/LightningDiT)) | 0.0105 | 0.0200 | 0.0074 | 0.0975 | 0.4884 |
+| **FA-VAE (Ours)** | **0.0044** | **0.0114** | **0.0020** | **0.0940** | **0.4156** |
 
+VA-VAE improves latent quality by aligning its latent space with foundation models (e.g., DINOv2), resulting in better overall reconstruction than VAE alternatives. However, these tokenizers still optimize all frequency components jointly, which limits their ability to recover sharp, high-frequency details—reflected in only modest improvements in high-frequency reconstruction error.
 
+FA-VAE extends VA-VAE by explicitly separating low- and high-frequency components during training. This decoupled, frequency-aware optimization enables the model to learn compact latents that better preserve both global structure and fine textures. As a result, FA-VAE achieves the strongest performance across all metrics.
 
+<p align="center">
+  <img src="images/fa-vae_recons.png" alt="FA-VAE reconstruction samples" width="70%">
+</p>
 
-</div>
-<div align="center">
-<img src="images/vis.png" alt="Visualization">
-</div>
+### **Generation Results**
 
-## ✨ Highlights
+| Tokenizer | Epochs | FID ↓ | IS ↑ | Pre. ↑ | Rec. ↑ | FID (CFG) ↓ | IS (CFG) ↑ | Pre. (CFG) ↑ | Rec. (CFG) ↑ |
+|-----------|--------|-------|------|--------|--------|-------------|------------|--------------|--------------|
+| VA-VAE    | 64     | 5.14  | 130.2 | 0.76 | 0.62 | 2.11 | 252.3 | 0.81 | 0.58 |
+| FA-VAE    | 64     |  **3.24** | **193.7** | **0.83** | **0.69** | **1.32** | **317.4** | **0.83** | **0.65** |
 
-- Latent diffusion system with 0.28 rFID and **1.35 FID on ImageNet-256** generation!
+We evaluate generative quality by training a diffusion-based image generator on top of the learned latent embeddings. Using LightningDiT (Yao, Yang, and Wang 2025) as the generative backbone, FA-VAE consistently improves generation metrics over the original VA-VAE tokenizer. Notably, FA-VAE yields lower gFID, higher IS, and stronger precision/recall, demonstrating that better frequency-preserving latents lead directly to sharper and more diverse generated samples. These improvements hold both with and without classifier-free guidance (CFG), indicating that the benefits stem from the latent representation itself rather than sampling tricks.
 
-- **More than 21.8× faster** convergence with **VA-VAE** and **LightningDiT** than original DiT!
+<p align="center">
+  <img src="images/fa-vae_samples.png" alt="FA-VAE generation samples" width="70%">
+</p>
 
-- **Surpass DiT with FID=2.11 with only 8 GPUs in about 10 hours**. Let's make diffusion transformers research more affordable!
+---
 
-## 📰 News
+## 3. Approaches
+- Model architecture
+- Wavelet component
+- Loss functions
 
-**VA-VAE has been listed in [CVPR 2025 Award Candidates](https://cvpr.thecvf.com/virtual/2025/events/AwardCandidates2025)!🏆(final 16 papers of 2878 accepted ones)**
+---
 
-- **[2025.04.04]** VA-VAE has been selected as **Oral Presentation!** 
+## 4. Other Experiments & Problems 
+- Metrics
+- Experiments on LDM
+- Experiments on VAR
+- Mask Loss
+- Problem Observation
 
-- **[2025.02.27]** **VA-VAE has been accepted by CVPR 2025!** 🎉🎉🎉
+---
 
-- **[2025.02.25]** We have released [training codes of VA-VAE](vavae)!
+## 5. Notes 
+### **Code Structure**  
+- Key directories
+- Environment
 
-- **[2025.01.16]** More experimental tokenizer variants have been released! You could check them [here](https://huggingface.co/hustvl/va-vae-imagenet256-experimental-variants/tree/main).
+### **Dataset: ImageNet Structure**
+- Path structures  
 
-- **[2025.01.02]** We have released the pre-trained weights.
+---
 
-- **[2025.01.01]** We have released the code and paper for VA-VAE and LightningDiT! The weights and pre-extracted latents will be released soon.
+## 6. Credits
 
-## 📄 Introduction
+This project builds upon the outstanding work of several open-source projects and research papers.  
+Special thanks to the following repositories and authors:
 
-Latent diffusion models (LDMs) with Transformer architectures excel at generating high-fidelity images. However, recent studies reveal an **optimization dilemma** in this two-stage design: while increasing the per-token feature dimension in visual tokenizers improves reconstruction quality, it requires substantially larger diffusion models and more training iterations to achieve comparable generation performance.
-Consequently, existing systems often settle for sub-optimal solutions, either producing visual artifacts due to information loss within tokenizers or failing to converge fully due to expensive computation costs.
-
-We argue that this dilemma stems from the inherent difficulty in learning unconstrained high-dimensional latent spaces. To address this, we propose aligning the latent space with pre-trained vision foundation models when training the visual tokenizers. Our proposed VA-VAE (Vision foundation model Aligned Variational AutoEncoder) significantly expands the reconstruction-generation frontier of latent diffusion models, enabling faster convergence of Diffusion Transformers (DiT) in high-dimensional latent spaces.
-To exploit the full potential of VA-VAE, we build an enhanced DiT baseline with improved training strategies and architecture designs, termed LightningDiT.
-The integrated system demonstrates remarkable training efficiency by reaching FID=2.11 in just 64 epochs -- an over 21× convergence speedup over the original DiT implementations, while achieving state-of-the-art performance on ImageNet-256 image generation with FID=1.35.
-
-## 📝 Results
-
-- State-of-the-art Performance on ImageNet 256x256 with FID=1.35.
-- Surpass DiT within only 64 epochs training, achieving 21.8x speedup.
-
-<div align="center">
-<img src="images/results.png" alt="Results">
-</div>
-
-## 🎯 How to Use
-
-### Installation
-
-```
-conda create -n lightningdit python=3.10.12
-conda activate lightningdit
-pip install -r requirements.txt
-```
-
-
-### Inference with Pre-trained Models
-
-- Download weights and data infos:
-
-    - Download pre-trained models
-        | Tokenizer | Generation Model | FID | FID cfg |
-        |:---------:|:----------------|:----:|:---:|
-        | [VA-VAE](https://huggingface.co/hustvl/vavae-imagenet256-f16d32-dinov2/blob/main/vavae-imagenet256-f16d32-dinov2.pt) | [LightningDiT-XL-800ep](https://huggingface.co/hustvl/lightningdit-xl-imagenet256-800ep/blob/main/lightningdit-xl-imagenet256-800ep.pt) | 2.17 | 1.35 |
-        |           | [LightningDiT-XL-64ep](https://huggingface.co/hustvl/lightningdit-xl-imagenet256-64ep/blob/main/lightningdit-xl-imagenet256-64ep.pt) | 5.14 | 2.11 |
-
-    - Download [latent statistics](https://huggingface.co/hustvl/vavae-imagenet256-f16d32-dinov2/blob/main/latents_stats.pt). This file contains the channel-wise mean and standard deviation statistics.
-
-    - Modify config file in ``configs/reproductions`` as required. 
-
-- Fast sample demo images:
-
-    Run:
-    ```
-    bash bash run_fast_inference.sh ${config_path}
-    ```
-    Images will be saved into ``demo_images/demo_samples.png``, e.g. the following one:
-    <div align="center">
-    <img src="images/demo_samples.png" alt="Demo Samples" width="600">
-    </div>
-
-- Sample for FID-50k evaluation:
-    
-    Run:
-    ```
-    bash run_inference.sh ${config_path}
-    ```
-    NOTE: The FID result reported by the script serves as a reference value. The final FID-50k reported in paper is evaluated with ADM:
-
-    ```
-    git clone https://github.com/openai/guided-diffusion.git
-    
-    # save your npz file with tools/save_npz.py
-    bash run_fid_eval.sh /path/to/your.npz
-    ```
-
-## 🎮 Train Your Own Models
-
- 
-- **We provide a 👆[detailed tutorial](docs/tutorial.md) for training your own models of 2.1 FID score within only 64 epochs. It takes only about 10 hours with 8 x H800 GPUs.** 
-
-
-## ❤️ Acknowledgements
-
-This repo is mainly built on [DiT](https://github.com/facebookresearch/DiT), [FastDiT](https://github.com/chuanyangjin/fast-DiT) and [SiT](https://github.com/willisma/SiT). Our VAVAE codes are mainly built with [LDM](https://github.com/CompVis/latent-diffusion) and [MAR](https://github.com/LTH14/mar). Thanks for all these great works.
-
-## 📝 Citation
-
-If you find our work useful, please cite our related paper:
-
-```
-# CVPR 2025
-@inproceedings{yao2025vavae,
-  title={Reconstruction vs. generation: Taming optimization dilemma in latent diffusion models},
-  author={Yao, Jingfeng and Yang, Bin and Wang, Xinggang},
-  booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition},
-  year={2025}
-}
-
-# NeurIPS 2024
-@article{yao2024fasterdit,
-  title={Fasterdit: Towards faster diffusion transformers training without architecture modification},
-  author={Yao, Jingfeng and Wang, Cheng and Liu, Wenyu and Wang, Xinggang},
-  journal={Advances in Neural Information Processing Systems},
-  volume={37},
-  pages={56166--56189},
-  year={2024}
-}
-```
+- **LightningDiT** — [GitHub](https://github.com/hustvl/LightningDiT) · [Paper](https://arxiv.org/pdf/2501.01423)  
+- **VAR** — [GitHub](https://github.com/FoundationVision/VAR) · [Paper](https://arxiv.org/pdf/2404.02905)  
+- **MAR** — [GitHub](https://github.com/LTH14/mar) · [Paper](https://arxiv.org/abs/2406.11838)  
+- **DiT** — [GitHub](https://github.com/facebookresearch/DiT) · [Paper](https://arxiv.org/pdf/2212.09748)  
+- **LDM** — [GitHub](https://github.com/CompVis/latent-diffusion) · [Paper](https://arxiv.org/pdf/2112.10752)  
+- **PyTorch Wavelets** — [GitHub](https://github.com/fbcotter/pytorch_wavelets)
